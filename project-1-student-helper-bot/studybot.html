@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StudyBot — AI Study Companion</title>
+<style>
+  /* ─── RESET & BASE ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-base:        #0B0B18;
+    --bg-sidebar:     #0F0F1F;
+    --bg-chat:        #0F0F1F;
+    --bg-bubble-bot:  rgba(255,255,255,0.05);
+    --bg-bubble-user: #534AB7;
+    --bg-input:       rgba(255,255,255,0.06);
+    --bg-topic:       rgba(255,255,255,0.04);
+    --border-glass:   rgba(83,74,183,0.35);
+    --border-topic:   rgba(29,158,117,0.5);
+    --border-sidebar: rgba(255,255,255,0.07);
+    --purple:         #534AB7;
+    --purple-light:   #7F77DD;
+    --purple-glow:    rgba(83,74,183,0.25);
+    --teal:           #1D9E75;
+    --teal-glow:      rgba(29,158,117,0.3);
+    --text-primary:   #EEEDFE;
+    --text-secondary: #AFA9EC;
+    --text-muted:     #6B6892;
+    --online-green:   #1D9E75;
+    --font:           'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-base);
+    font-family: var(--font);
+    color: var(--text-primary);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ─── APP SHELL ─────────────────────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-columns: 265px 1fr;
+    grid-template-rows: 1fr;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ─── SIDEBAR ───────────────────────────────────────────────── */
+  .sidebar {
+    background: var(--bg-sidebar);
+    border-right: 0.5px solid var(--border-sidebar);
+    display: flex;
+    flex-direction: column;
+    padding: 28px 18px 24px;
+    gap: 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Logo */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 36px;
+    padding-left: 4px;
+  }
+
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #2D2680 0%, #534AB7 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 0.5px solid var(--border-glass);
+    flex-shrink: 0;
+  }
+
+  .logo-icon svg { width: 22px; height: 22px; }
+
+  .logo-spark {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 12px;
+    height: 12px;
+  }
+
+  .logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+
+  /* Topic buttons */
+  .topics-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  .topics {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .topic-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 14px;
+    border: 0.5px solid var(--border-topic);
+    background: var(--bg-topic);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, transform 0.1s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .topic-btn:hover {
+    background: rgba(29,158,117,0.12);
+    border-color: var(--teal);
+    transform: translateX(2px);
+  }
+
+  .topic-btn.active {
+    background: rgba(29,158,117,0.15);
+    border-color: var(--teal);
+  }
+
+  .topic-btn svg {
+    width: 18px;
+    height: 18px;
+    opacity: 0.85;
+    flex-shrink: 0;
+    color: var(--teal);
+  }
+
+  /* Sidebar divider */
+  .sidebar-divider {
+    height: 0.5px;
+    background: var(--border-sidebar);
+    margin: 20px 0;
+  }
+
+  /* User profile */
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.18s;
+  }
+
+  .user-profile:hover { background: rgba(255,255,255,0.05); }
+
+  .user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #534AB7, #7F77DD);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    border: 1.5px solid var(--border-glass);
+  }
+
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .user-role { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .user-chevron {
+    opacity: 0.4;
+    width: 16px;
+    height: 16px;
+  }
+
+  /* ─── MAIN AREA ─────────────────────────────────────────────── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-base);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Ambient glow behind chat */
+  .main::before {
+    content: '';
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(83,74,183,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── TOP BAR ───────────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px 14px;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .online-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--online-green);
+    box-shadow: 0 0 6px var(--teal-glow);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--teal-glow); }
+    50%       { opacity: 0.7; box-shadow: 0 0 12px var(--teal-glow); }
+  }
+
+  .online-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  .topbar-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .topbar-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+  }
+
+  .ai-badge {
+    background: var(--teal);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.06em;
+  }
+
+  .settings-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 6px;
+    border-radius: 8px;
+    transition: color 0.18s, background 0.18s;
+    display: flex;
+    align-items: center;
+  }
+
+  .settings-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.07); }
+  .settings-btn svg { width: 22px; height: 22px; }
+
+  /* ─── CHAT WINDOW ───────────────────────────────────────────── */
+  .chat-wrapper {
+    flex: 1;
+    padding: 0 24px 16px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .chat-glass {
+    flex: 1;
+    background: rgba(15,15,35,0.6);
+    border: 0.5px solid var(--border-glass);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(83,74,183,0.1), inset 0 0 40px rgba(83,74,183,0.03);
+  }
+
+  /* Messages scroll area */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 22px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  /* ─── MESSAGE ROW ───────────────────────────────────────────── */
+  .msg-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .msg-row.user {
+    flex-direction: row-reverse;
+  }
+
+  /* Bot avatar */
+  .bot-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2D2680, #534AB7);
+    border: 1.5px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .bot-avatar svg { width: 20px; height: 20px; }
+
+  /* Bubble + timestamp wrapper */
+  .msg-content { display: flex; flex-direction: column; gap: 5px; max-width: 62%; }
+  .msg-row.user .msg-content { align-items: flex-end; }
+
+  /* Bubble */
+  .bubble {
+    padding: 14px 18px;
+    border-radius: 6px 18px 18px 18px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--text-primary);
+    background: var(--bg-bubble-bot);
+    border: 0.5px solid rgba(83,74,183,0.25);
+    word-break: break-word;
+    white-space: pre-wrap;
+    backdrop-filter: blur(4px);
+  }
+
+  .msg-row.user .bubble {
+    background: var(--bg-bubble-user);
+    border: none;
+    border-radius: 18px 6px 18px 18px;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(83,74,183,0.4);
+  }
+
+  /* Timestamp */
+  .timestamp {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 4px;
+  }
+
+  .checkmark { color: var(--teal); font-size: 12px; }
+
+  /* ─── TYPING INDICATOR ──────────────────────────────────────── */
+  .typing-bubble {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-bubble-bot);
+    border: 0.5px solid rgba(83,74,183,0.25);
+    border-radius: 6px 18px 18px 18px;
+    width: fit-content;
+    backdrop-filter: blur(4px);
+  }
+
+  .typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30%            { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ─── INPUT BAR ─────────────────────────────────────────────── */
+  .input-bar {
+    padding: 14px 18px;
+    border-top: 0.5px solid rgba(83,74,183,0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(11,11,24,0.5);
+  }
+
+  .mic-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+  }
+
+  .mic-btn:hover { background: rgba(255,255,255,0.12); }
+  .mic-btn svg { width: 18px; height: 18px; }
+
+  .input-field {
+    flex: 1;
+    background: var(--bg-input);
+    border: 0.5px solid rgba(83,74,183,0.2);
+    border-radius: 50px;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: var(--text-primary);
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: text;
+  }
+
+  .input-field::placeholder { color: var(--text-muted); }
+
+  .input-field:focus {
+    border-color: rgba(83,74,183,0.55);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--teal);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px var(--teal-glow);
+  }
+
+  .send-btn:hover {
+    background: #22B585;
+    transform: scale(1.06);
+    box-shadow: 0 6px 20px rgba(29,158,117,0.5);
+  }
+
+  .send-btn:active { transform: scale(0.96); }
+  .send-btn svg { width: 20px; height: 20px; color: #fff; }
+
+  /* ─── ANIMATIONS ────────────────────────────────────────────── */
+  .msg-row {
+    animation: fadeUp 0.28s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── SCROLLBAR for messages ────────────────────────────────── */
+  .messages { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
+  <aside class="sidebar">
+
+    <!-- Logo -->
+    <div class="logo">
+      <div class="logo-icon">
+        <!-- Book icon -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="#AFA9EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="#AFA9EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 7h8M8 11h5" stroke="#1D9E75" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <!-- Spark star -->
+        <svg class="logo-spark" viewBox="0 0 12 12" fill="none">
+          <path d="M6 0L7.2 4.8L12 6L7.2 7.2L6 12L4.8 7.2L0 6L4.8 4.8L6 0Z" fill="#1D9E75"/>
+        </svg>
+      </div>
+      <span class="logo-text">StudyBot</span>
+    </div>
+
+    <!-- Quick topics -->
+    <p class="topics-label">Quick Topics</p>
+    <div class="topics">
+
+      <button class="topic-btn active" onclick="sendTopic('exam')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+        Exams
+      </button>
+
+      <button class="topic-btn" onclick="sendTopic('assignment')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Assignments
+      </button>
+
+      <button class="topic-btn" onclick="sendTopic('internship')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+        Internship
+      </button>
+
+      <button class="topic-btn" onclick="sendTopic('career')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+        </svg>
+        Career
+      </button>
+
+      <button class="topic-btn" onclick="sendTopic('cgpa')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        CGPA
+      </button>
+
+      <button class="topic-btn" onclick="sendTopic('stress')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+        Stress
+      </button>
+
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- User profile -->
+    <div class="user-profile">
+      <div class="user-avatar">SD</div>
+      <div class="user-info">
+        <div class="user-name">Subin Das</div>
+        <div class="user-role">Student</div>
+      </div>
+      <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════ MAIN ═══════════════ -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="online-dot"></div>
+        <span class="online-text">Online</span>
+      </div>
+      <div class="topbar-center">
+        <span class="topbar-title">StudyBot</span>
+        <span class="ai-badge">AI</span>
+      </div>
+      <button class="settings-btn" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Chat area -->
+    <div class="chat-wrapper">
+      <div class="chat-glass">
+
+        <div class="messages" id="messages">
+          <!-- Welcome message -->
+          <div class="msg-row bot" id="welcome-msg">
+            <div class="bot-avatar">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z" stroke="#AFA9EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 12v5c3.333 2 8.667 2 12 0v-5" stroke="#1D9E75" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="msg-content">
+              <div class="bubble">Hi! I'm StudyBot 🤖&#10;Your AI study companion. How can I help you today?</div>
+              <div class="timestamp" id="welcome-time"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input bar -->
+        <div class="input-bar">
+          <button class="mic-btn" aria-label="Voice input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <input
+            class="input-field"
+            id="chat-input"
+            type="text"
+            placeholder="Ask me anything about college..."
+            autocomplete="off"
+            maxlength="300"
+          />
+          <button class="send-btn" id="send-btn" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────
+//  KNOWLEDGE BASE  — O(1) dictionary lookup
+// ─────────────────────────────────────────────────
+const KNOWLEDGE_BASE = {
+  "hello"        : "Hey there! 👋 I'm StudyBot, your personal college assistant.\nAsk me about exams, assignments, career, internships, CGPA, stress — I've got you covered!",
+  "hi"           : "Hi! Ready to help you ace your college journey. What's on your mind?",
+  "hey"          : "Hey! What can I help you with today?",
+  "good morning" : "Good morning! ☀️ Hope you're ready for a productive day. How can I help?",
+  "good night"   : "Good night! 🌙 Don't forget to revise before you sleep. Rest well!",
+
+  "exam"         : "📚 Exam Tips:\n\n1. Start at least 1 week before the exam date.\n2. Use the Pomodoro technique — 25 min study, 5 min break.\n3. Solve previous year question papers.\n4. Teach what you learned to someone else — best revision trick!\n\nGood luck! You've got this. 💪",
+
+  "study"        : "📖 Smart Study Habits:\n\n→ Active recall beats passive reading every time.\n→ Use mind maps for complex topics.\n→ Study in 90-minute deep work blocks.\n→ Switch subjects every session to stay fresh.",
+
+  "syllabus"     : "📋 Always check your official university portal for the latest syllabus.\n\nTip: Download it on Day 1, highlight the high-weightage topics first!",
+
+  "notes"        : "📝 Best resources for notes:\n\n→ GeeksforGeeks : geeksforgeeks.org\n→ NPTEL Lectures : nptel.ac.in\n→ YouTube: Apna College, CodeWithHarry, Jenny's Lectures",
+
+  "assignment"   : "📌 Assignment Strategy:\n\n1. Read the problem statement at least twice.\n2. Break it into smaller subtasks.\n3. Never copy-paste — understand and paraphrase.\n4. Submit at least a day before the deadline!",
+
+  "project"      : "🛠️ Project Tips:\n\n→ Pick a problem you genuinely face in college life.\n→ Keep scope small but execution clean.\n→ Always write a README for your project.\n→ Use GitHub to showcase your work!",
+
+  "deadline"     : "⏰ Deadline approaching?\n\nBreak your work into 3 parts: Plan → Execute → Review.\nDon't panic — start now, even if imperfectly!",
+
+  "internship"   : "💼 Internship Hunting:\n\n→ LinkedIn, Internshala, Unstop — check daily.\n→ Apply to 10+ positions per week.\n→ Tailor your resume for each role.\n→ A personal project > a blank resume every single time.",
+
+  "resume"       : "📄 Resume Tips:\n\n→ Keep it to 1 page as a fresher.\n→ Lead with a strong Skills section.\n→ Add your GitHub and LinkedIn links.\n→ Use action verbs: Built, Developed, Implemented, Optimized.",
+
+  "career"       : "🚀 Career Roadmap for CS Students:\n\nYear 1–2: Learn DSA + one language deeply.\nYear 2–3: Build projects, contribute to open source.\nYear 3–4: Internships + competitive coding + placement prep.",
+
+  "placement"    : "🎯 Placement Preparation:\n\n→ DSA on LeetCode (150 problems is a great start).\n→ Practice aptitude on IndiaBix.\n→ Mock interviews with peers.\n→ Research the company before every interview!",
+
+  "attendance"   : "📊 Attendance below 75%?\n\nTalk to your professor early. Most colleges allow medical/duty leave if communicated properly. Don't ignore it!",
+
+  "cgpa"         : "📈 CGPA Advice:\n\n→ Don't obsess, but don't ignore it either.\n→ A 7.5+ CGPA keeps most doors open.\n→ Projects and skills matter more at top product companies.",
+
+  "stress"       : "🧘 Feeling stressed? Totally normal in college.\n\n→ Take a 10-minute walk — seriously, it works.\n→ Talk to a friend or mentor.\n→ Sleep 7–8 hours. Your brain consolidates memory during sleep.\n→ Remember: one bad exam does NOT define your career. 💙",
+
+  "resources"    : "🌐 Top Free Learning Resources:\n\n→ CS Fundamentals : cs50.harvard.edu (free!)\n→ Coding Practice  : leetcode.com, codeforces.com\n→ Web Dev          : freecodecamp.org\n→ AI / ML          : fast.ai, kaggle.com\n→ Open Courses     : nptel.ac.in, coursera.org",
+
+  "time"         : `🕒 Current time is: ${new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}`,
+  "date"         : `📅 Today's date is: ${new Date().toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}`,
+
+  "help"         : "🤖 I can help you with:\n\nexam · study · syllabus · notes · assignment · project · deadline · internship · resume · career · placement · attendance · cgpa · stress · resources · time · date\n\nJust type any topic!",
+};
+
+const FALLBACK = [
+  "🤔 Hmm, I didn't quite catch that. Type 'help' to see what I can do!",
+  "❓ I'm not sure about that one. Try rephrasing or type 'help'.",
+  "📭 That's outside my knowledge base. Type 'help' to explore what I know!",
+  "🙈 Oops! I don't have an answer for that yet. Type 'help' for available topics.",
+];
+
+// ─────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────
+function getTime() {
+  return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function sanitize(input) {
+  return input.toLowerCase().trim();
+}
+
+function getResponse(clean) {
+  if (KNOWLEDGE_BASE[clean]) return KNOWLEDGE_BASE[clean];
+  for (const key in KNOWLEDGE_BASE) {
+    if (clean.includes(key)) return KNOWLEDGE_BASE[key];
+  }
+  return FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
+}
+
+// ─────────────────────────────────────────────────
+//  DOM REFS
+// ─────────────────────────────────────────────────
+const messagesEl  = document.getElementById('messages');
+const inputEl     = document.getElementById('chat-input');
+const sendBtn     = document.getElementById('send-btn');
+
+// Set welcome timestamp
+document.getElementById('welcome-time').textContent = getTime();
+
+// ─────────────────────────────────────────────────
+//  RENDER FUNCTIONS
+// ─────────────────────────────────────────────────
+function botAvatar() {
+  return `<div class="bot-avatar">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z" stroke="#AFA9EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M6 12v5c3.333 2 8.667 2 12 0v-5" stroke="#1D9E75" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>`;
+}
+
+function appendUserMsg(text) {
+  const t = getTime();
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `
+    <div class="msg-content">
+      <div class="bubble">${escapeHtml(text)}</div>
+      <div class="timestamp">${t} <span class="checkmark">✓</span></div>
+    </div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function appendTyping() {
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.id = 'typing-row';
+  row.innerHTML = `
+    ${botAvatar()}
+    <div class="msg-content">
+      <div class="typing-bubble">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-row');
+  if (el) el.remove();
+}
+
+function appendBotMsg(text) {
+  const t = getTime();
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.innerHTML = `
+    ${botAvatar()}
+    <div class="msg-content">
+      <div class="bubble">${escapeHtml(text)}</div>
+      <div class="timestamp">${t}</div>
+    </div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function scrollBottom() {
+  messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+}
+
+// ─────────────────────────────────────────────────
+//  MAIN SEND LOGIC
+// ─────────────────────────────────────────────────
+let isBotTyping = false;
+
+function handleSend() {
+  const raw = inputEl.value.trim();
+  if (!raw || isBotTyping) return;
+
+  inputEl.value = '';
+  inputEl.focus();
+
+  appendUserMsg(raw);
+
+  const clean = sanitize(raw);
+
+  // Exit check
+  if (['exit','quit','bye','goodbye'].includes(clean)) {
+    isBotTyping = true;
+    appendTyping();
+    setTimeout(() => {
+      removeTyping();
+      appendBotMsg("👋 Thanks for using StudyBot! Keep learning, keep growing. See you next time!");
+      isBotTyping = false;
+    }, 900);
+    return;
+  }
+
+  const response = getResponse(clean);
+  isBotTyping = true;
+  appendTyping();
+
+  // Simulate realistic typing delay based on response length
+  const delay = Math.min(600 + response.length * 8, 2200);
+
+  setTimeout(() => {
+    removeTyping();
+    appendBotMsg(response);
+    isBotTyping = false;
+  }, delay);
+}
+
+// ─────────────────────────────────────────────────
+//  TOPIC QUICK-SEND (sidebar buttons)
+// ─────────────────────────────────────────────────
+function sendTopic(topic) {
+  if (isBotTyping) return;
+
+  // Highlight active button
+  document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  inputEl.value = topic;
+  handleSend();
+}
+
+// ─────────────────────────────────────────────────
+//  EVENT LISTENERS
+// ─────────────────────────────────────────────────
+sendBtn.addEventListener('click', handleSend);
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
+});
+
+// Focus input on load
+inputEl.focus();
+</script>
+</body>
+</html>
